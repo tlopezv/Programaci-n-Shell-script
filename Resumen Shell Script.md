@@ -293,7 +293,7 @@ ___
 
 Existe un conjunto de variables que afectan al funcionamiento del shell. Por ejemplo: `HOME`, `PATH`, `LANG`,...
 
-Aquí vamos a destacar la variable `IFS` (Input Field Separators). El valor de esta variable es una lista de caracteres que se emplearán en el proceso de división de campos realizado tras el proceso de expansión (que se verá más adelante) y por el comando `read`. El valor por defecto es <espacio><tab><nueva-línea>. Podrá ver un ejemplo de uso de esta variable cuando realice los ejercicios propuestos (ver solución a script_user.sh).
+Aquí vamos a destacar la variable `IFS` (Input Field Separators). El valor de esta variable es una lista de caracteres que se emplearán en el proceso de división de campos realizado tras el proceso de expansión (que se verá más adelante) y por el comando `read`. El valor por defecto es `<espacio><tab><nueva-línea>`. Podrá ver un ejemplo de uso de esta variable cuando realice los ejercicios propuestos (ver solución a script_user.sh).
 
 
 #### Parámetros posicionales
@@ -523,3 +523,132 @@ Comente la línea del script `script_var-shell.sh`, donde aparece la palabra *"f
 
 ___
 
+#### Expansión de parámetros y variables
+
+El formato general para incluir una expansión de variables o parámetros `${PAR}`
+
+Las llaves pueden omitirse, salvo cuando se trate de un parámetro posicional con más de un dígito o cuando se quiera separar el nombre de la variable de otros caracteres.
+
+`echo $PAR   #puede omitirse`
+
+`echo ${10}   #no puede omitirse`
+
+`${PAR}TEXTO  #no se omite`
+
+Si la expansión de parámetros ocurre dentro de comillas dobles, sobre el resultado no se realizará la expansión de ruta ni la división de campos. En el caso del parámetro especial @, se hace la división de campos siempre.
+
+|  Otros formatos  |  Valores por defecto  |
+|------------------|-----------------------|
+|  `${PAR:-alternativo}`  |  Valor de la variable. Si la variable no tiene ningún valor, la construcción se sustituye por el valor `alternativo`. |
+|  `${PAR:=alternativo}`  |  Ídem al anterior, pero asignando el valor `alternativo` a la variable.  |
+|  `${PAR%sufijo}`  |  Elimina el `sufijo` más pequeño del valor de la variable. `sufijo` es un patrón como los utilizados en la expansión de ruta. Si en vez de `%` se pone `%%` se elimina el sufijo más grande.  |
+|  `${PAR#prefijo}` |  Elimina el `prefijo` más pequeño del valor de la variable. `prefijo` es un patrón como los utilizados en la expansión de ruta. Si en vez de `#` se pone `##` se elimina el prefijo más grande.  |
+
+
+Ejemplos:
+
+`script_expansion1.sh`
+
+~~~
+#!/bin/sh
+VAR=1
+echo $VAR
+unset VAR
+echo ${VAR:-2}
+echo $VAR
+FICH=fichero.c
+echo ${FICH%.c}.o
+~~~
+
+`script_expansion2.sh`
+
+~~~
+#!/bin/sh
+VAR=1
+echo $VAR
+unset VAR
+echo ${VAR:=2}
+echo $VAR
+FICH=/usr/bin/prueba
+echo ${FICH##*/}
+~~~
+
+#### Sustitución de comando
+
+Permite que la salida estándar de un programa se utilice como parte de la línea que se va a interpretar.
+
+`$(comando)`
+
+<code>\`comando\`</code>
+
+El shell ejecutará `comando`, capturará su salida estándar y sustituirá `$(comando)` por la salida capturada.
+
+Para almacenar en una variable el nombre de todos los ficheros con extensión .sh del directorio actual:
+
+<code>VAR=\`ls *.sh\`</code>
+
+Para matar el proceso con nombre `firefox-bin`:
+
+`kill -9 $(pidof firefox-bin)`
+
+#### Expansión aritmética
+
+`$((expresión))`
+
+Permite evaluar las cadenas indicadas en la expresión como enteros, admitiendo gran parte de los operadores usados en el lenguaje C, pudiendo usar paréntesis como parte de la expresión y el signo `-` para números negativos (a las cadenas que contengan letras se les asigna el valor `0`).
+
+Tras la evaluación aritmética, el resultado vuelve a ser convertido a una cadena.
+
+La conversión de un número a un carácter puede realizarse con `$'\xxx'` (en `bash`) o con `'\xxx'` (en `dash`), ambos con comillas simples, pero ello no está recogido en el estándar POSIX.
+
+Si se usan variables en la expresión, no es necesario que vayan precedidas por el carácter `$` si ya contienen un valor entero válido (sí es necesario para los parámetros posicionales y especiales).
+
+---
+
+Mire el contenido del script `script_expansion3.sh`, que deberá contener lo siguiente:
+
+`script_expansion3.sh`
+
+~~~
+#!/bin/sh
+VAR=1
+VAR=$VAR+1
+echo $VAR
+RES1=$(($VAR))+1
+echo $RES1
+VAR=1
+RES2=$((VAR+1)) #VAR no necesita $
+echo $RES2
+VARb=b
+echo $(($VARb+1)) #VARb necesita $
+~~~
+
+Compruebe que dispone del permiso de ejecución. Invóquelo mediante el comando:
+
+`./script_expansion3.sh`
+
+Analice el resultado.
+
+---
+
+#### Expansión de ruta
+
+Los campos que incluyan los caracteres `*`, `?` y `[` (asterisco, interrogación y apertura de corchetes) no entrecomillados serán sustituidos por la lista de ficheros que cumplan ese patrón. Si no hay ningún fichero con ese patrón no se sustituye nada.
+
+___
+
+Utilice el script `script_var-shell.sh`. Ejecute los siguientes comandos observando el valor de la variable especial @:
+
+`./script_var-shell.sh s*_for?.sh`
+
+`./script_var-shell.sh s*_for*.sh`
+
+`./script_var-shell.sh s*_exp*.sh`
+
+`./script_var-shell.sh s*_exp*[12].sh`
+
+`./script_var-shell.sh s*_e*.sh`
+
+___
+
+### Comandos del shell
