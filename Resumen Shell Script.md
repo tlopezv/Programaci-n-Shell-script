@@ -223,11 +223,10 @@ Se pueden crear y utilizar variables, que aquí se llaman parámetros:
 
 #### Variables
 
-Operaciones básicas con las variables:
 
-
-|  Sólo Definición                             |  `VAR=""`     | `VAR=`  |
+|  Operaciones básicas con las variables:      |               |         |
 |----------------------------------------------|---------------|---------|
+|  Sólo Definición                             |  `VAR=""`     | `VAR=`  |
 |  Definición y/o Inicialización/Modificación  |  `VAR=valor`  |         |
 |  Expansión (Acceso a Valor)                  |  `$VAR`       | `${VAR}`|
 |  Eliminación de la variable                  |  `unset VAR`  |         |
@@ -652,3 +651,340 @@ Utilice el script `script_var-shell.sh`. Ejecute los siguientes comandos observa
 ___
 
 ### Comandos del shell
+
+Tipos de comandos (de menor a mayor nivel):
+
+1. Comandos simples
+2. Tuberías
+3. Listas AND-OR
+4. Listas
+5. Listas compuestas
+6. Comandos compuestos (o estructuras de control)
+7. Definiciones de función
+
+Cada uno de estos tipos se forma mediante la composición de elementos de los tipos inferior.
+
+En general, el valor devuelto por un comando compuesto (tipo 2 y superiores) será el valor devuelto por el último comando simple ejecutado.
+
+#### Comandos simples
+
+Comando simple formado por:
+
+`[VAR=v] [redir] [ejecutable argumentos] [redir]`
+
+Pudiendo ser el `ejecutable` programas *"ejecutables"* (comandos internos y ejecutables externos) e *"interpretables"* (funciones).
+
+En un mismo comando simple se puede hacer simultáneamente la *asignación de variables* **y** la *ejecución de un programa*. Cuando un comando simple no incluye un programa a ejecutar, la asignación de variables afecta a todo el shell, de lo contrario la asignación sólo afecta al programa que se va a ejecutar.
+
+|  Ejemplo  |  Acciones que realiza  |
+|-----------|------------------------|
+|  `VAR=x`  |  Asigna el valor `x` a la variable `VAR` y afecta a todo el proceso shell actual  |
+|  `VAR=x programa`  |  Asigna el valor `x` a la variable `VAR` y afecta solo al `programa`.  |
+|  `VAR=y OTRA=z` |  Asigna el valor `y` a la variable `VAR` y el valor `z` a la variable `OTRA`, que afectan a todo el shell.  |
+|  `VAR=x programa $VAR` |  Asigna el valor `x` a la variable `VAR` y afecta sólo al `programa`, al cual se le pasa como primer argumento `y`.  |
+|  `echo $VAR` |  Se imprime `y` por pantalla.  |
+|  `VAR=x > fichero programa`  |  Asignan el valor `x` a la variable `VAR` que afecta solo al `programa`. Se ejecuta el `programa` y la salida estándar se redirige al archivo `fichero`. La redirección se realiza independientemente de que aparezca antes o después del `programa`.  |
+|  `VAR=x programa > fichero  #equivalente` |  Asignan el valor `x` a la variable `VAR` que afecta solo al `programa`. Se ejecuta el `programa` y la salida estándar se redirige al archivo `fichero`. La redirección se realiza independientemente de que aparezca antes o después del `programa`.  |
+
+
+> NOTA: Si hubiera varias redirecciones se realizan en el orden de aparición en la línea, de izquierda a derecha.
+
+#### Tuberías
+
+Es una secuencia de uno o más comandos (simples o compuestos, pero no ningún tipo de lista) separados por el operador `|`.
+
+La salida estándar de un comando se conecta a la entrada estándar del siguiente comando (cada comando se ejecuta en otro subshell simultáneamente).
+
+`[ ! ] comando1 [ | comando2 … ]`
+
+El carácter `!` que hace la *negación lógica* del valor devuelto por el último comando, de tal manera que el valor devuelto por la tubería sería `1` si el último comando devuelve `0`, o `0` en caso contrario.
+
+#### Listas AND-OR
+
+Una lista `AND` es una secuencia de *tuberías* (tenga en cuenta que una *tubería* puede ser sólo un *comando simple*) separadas por el operador `&&`.
+
+`tuberia1 [ && tuberia2 …  ]`
+
+Se van ejecutando las *tuberías* de izquierda a derecha hasta que una de ellas devuelva un valor **distinto** de *cero*. No se realiza ninguna expansión en una *tubería* hasta que el shell no determine que tiene que ejecutar dicha *tubería* (dependerá del resultado de la *tubería* anterior).
+
+Una lista `OR` es una secuencia de tuberías separadas por el operador `||`.
+
+`tuberia1 [ || tuberia2 … ]`
+
+Se van ejecutando las *tuberías* de izquierda a derecha hasta que una de ellas devuelva un valor *cero*. No se realiza ninguna expansión en una *tubería* hasta que el shell no determine que tiene que ejecutar dicha *tubería*.
+
+Una lista `AND-OR` es el resultado de combinar lista `AND` y/o `OR` en una misma línea. Los operadores `&&` y `||` se evalúan con la misma prioridad de izquierda a derecha.
+
+`tuberia1 || tuberia2 && tuberia3`
+
+#### Listas
+
+Las listas son secuencias de una o más listas `AND-OR` separadas por los operadores `;` o `&`. Los operadores `;` y `&` no pueden aparecer seguidos (por ejemplo, daría error `prog1 & ; prog2`)
+
+Según el operador las listas pueden ser *secuenciales*, *asíncronas* o *mixtas* (combinación de ambas).
+
+##### Listas secuenciales
+
+Se utiliza como separador el operador `;`. Se van ejecutando los distintos comandos secuencialmente (no se ejecuta un comando hasta que haya terminado el anterior). Cada lista `AND-OR` debe estar terminada por el operador `;` a excepción de la última donde es opcional.
+
+`listaAND-OR1 [ ; listaAND-OR2 … ] [ ; ]`
+
+##### Listas asíncronas
+
+Se utiliza como separador el operador `&`. Se van ejecutando los distintos comandos sin esperar a que el comando anterior termine (ejecución en segundo plano). El formato es:
+
+`listaAND-OR1 & [ listaAND-OR2 & ]`
+
+En este caso, a menos que se haga una redirección explícita de la entrada estándar, si un programa en segundo plano lee de la entrada estándar recibirá un error de fin de fichero (EOF).
+
+##### Listas mixtas
+
+Son combinaciones de listas *secuenciales* y *asíncronas.* Por ejemplo:
+
+`#asíncrona y secuencial`
+`lANDOR1 & lANDOR2 [ ; ]`
+
+`#secuencial y asíncrona`
+`lANDOR1 ; lANDOR2 &`
+
+`#asíncrona y secuencial`
+`lANDOR1 & lANDOR2 & lANDOR3 ; lANDOR4`
+
+`#secuencial, asíncrona, secuencial`
+`lANDOR1 ; lANDOR2 & lANDOR3`
+
+#### Listas compuestas
+
+No es más que una secuencia de listas , separadas por el carácter de nueva línea (`intros`), terminada por el operador `;`, el operador `&`, el carácter de nueva línea (`intro`) o un comando compuesto. La utilidad de este tipo de listas se verá sobre todo cuando se expliquen los comandos compuestos.
+
+---
+
+Mire el contenido del script `script_operadores.sh`, que deberá contener lo siguiente:
+
+`script_operadores.sh`
+
+~~~
+#!/bin/sh
+head -1 /etc/passwd && echo "Sin error1A" || echo "Con error1B"
+head -1 /nofile && echo "Sin error2A" || echo "Con error2B"
+echo "Comando dividido \
+en dos líneas"
+echo "Sin escapado: $$"
+echo "Con escapado: \$\$"
+echo "N º de proceso del shell bash:" `pidof bash`
+~~~
+
+Compruebe que dispone del permiso de ejecución. Invóquelo y analice su funcionamiento.
+
+Desde la línea de comandos, cree listas y tuberías de todos los tipos vistos usando combinaciones de los comandos `ls`, `echo`, `cat` y `ps`.
+
+---
+
+
+#### Comandos compuestos o estructuras de control
+
+En otros lenguajes de programación se conocen como *estructuras de control*. Si se hace una redirección a continuación del terminador, en la misma línea, esa redirección se aplicará a todos los comandos que se encuentre en ese comando compuesto, a menos que se haga otra redirección explícita en un comando en concreto.
+
+##### Secuencial (agrupación de comandos)
+
+La agrupación de comandos permite mejorar la legibilidad del código, aplicar una redirección a un conjunto de comandos y crear un subshell entre otras cosas.
+
+Existen dos formas de agrupar comandos, con los siguientes formatos:
+
+`( lista-compuesta )`
+
+Se ejecuta la *lista compuesta* en un **subshell**. Los cambios que se produzcan en este **subshell** no afectarán al **shell actual**. Si la lista compuesta está terminada por el carácter de nueva línea, este carácter puede omitirse.
+
+`{ lista-compuesta }`
+
+Se ejecuta la lista compuesta en el **shell actual**. Recuerde que las listas compuestas están terminadas por los operadores `;`, `&` o *nueva línea* (el último comando debe estar separado de la llave de cierre por esos operadores).
+
+En ambos casos, se permite añadir una *redirección* al final (detrás del `)` o `}`) que afectará a todos los comandos del grupo.
+
+##### Condicional: if-elif-else
+
+~~~
+if lista-compuestaA1 then
+    lista-compuestaB1
+elif lista-compuestaA2 then
+    lista-compuestaB2
+...
+else
+  lista-compuestaN
+fi
+~~~
+
+> ADVERTENCIA: `0` significa `verdadero` aquí
+
+Si no quiere realizar ninguna operación en un determinado caso, puede utilizar el comando `:` (comando nulo).
+
+|  Si `condicion` devuelve `0` si algo es *verdadero* y `1` si es *falso*  |  Equivalente  |
+|------------------------------------------------------------------------------|---------------|
+|  if condicion; then<br/>&nbsp;&nbsp;&nbsp;&nbsp;{&nbsp;comando1;&nbsp;comando2;&nbsp;}<br/>fi          |  if condicion; then<br/>&nbsp;&nbsp;&nbsp;&nbsp;comando1;&nbsp;comando2;<br/>  fi  |  
+|  if condicion<br/>then<br/>&nbsp;&nbsp;&nbsp;&nbsp;comando1;<br/>&nbsp;&nbsp;&nbsp;&nbsp;comando2;<br/>fi  |  if condicion<br/>then<br/>&nbsp;&nbsp;&nbsp;&nbsp;comando1<br/>&nbsp;&nbsp;&nbsp;&nbsp;comando2<br/>fi  |
+|  if condicion; then comando1; comando2; fi  |  |
+|  if condicion; then { comando1; comando2; } fi  |  |
+
+
+> NOTA: Recuerde que si usa las llaves, debe separarlas del resto de elementos.
+
+Respecto a la `condición`; que puede usarse, basta cualquier lista compuesta que devuelva un valor (por ejemplo, pueden usarse los comandos internos `true` o `false`). El valor de una lista compuesta es el valor del último comando simple ejecutado en la lista compuesta.
+
+Un programa habitual que se utiliza como condición es el programa `test`. El comando `test` se puede ejecutar de dos formas (ambas equivalentes):
+
+`test expresion`
+
+`[ expression ]  #los [] deben estar separados`
+
+En la segunda forma los corchetes no son operadores ni indican que la expresión sea opcional, sino que realmente son el nombre del programa.
+
+<table>
+   <thead>
+      <tr>
+         <th>Tipo</th><th>Expresión</th><th>Verdadera sí (devuelve 0)</th>
+      </tr>
+   </thead>
+   <tr>
+      <td rowspan=6>Enteros (n1 y n2 se convierten a enteros)</td>
+      <td><code>n1 -eq n2</code></td>
+      <td>n1 = n2</td>
+   </tr>
+   <tr>
+      <td><code>n1 -ne n2</code></td>
+      <td>n1 ≠ n1</td>
+   </tr>
+   <tr>
+      <td><code>n1 -gt n2</code></td>
+      <td>n1 > n2</td>
+   </tr>
+   <tr>
+      <td><code>n1 –ge n2</code></td>
+      <td>n1 ≥ n2</td>
+   </tr>
+   <tr>
+      <td><code>n1 -lt n2</code></td>
+      <td>n1 < n2</td>
+   </tr>
+   <tr>
+      <td><code>n1 -le n2</code></td>
+      <td>n1 ≤ n2</td>
+   </tr>
+   <tr>
+      <td rowspan=4>Cadenas</td>
+      <td><code>"$VAR" = "cad"</code></td>
+      <td>$VAR vale "cad". <strong>Es conveniente, pero no necesario, poner la variable entre comillas por si tuviera espacios o estuviese vacía, para que al expandirse no dé error de sintaxis.</strong></td>
+   </tr>
+   <tr>
+      <td><code>"$VAR" != "cad"</code></td>
+      <td>$VAR vale algo distinto de "cad".</td>
+   </tr>
+   <tr>
+      <td><code>-z "$VAR"<br/>"$VAR"</code></td>
+      <td>$VAR está vacía. Equivale a <code>"$VAR" = ""</code></td>
+   </tr>
+   <tr>
+      <td><code>-n "$VAR"</code></td>
+      <td>$VAR no está vacía. Equivale a <code>"$VAR" != ""</code> o <code>! -z</code></td>
+   </tr>
+   <tr>
+      <td rowspan=11>Ficheros</td>
+      <td><code>-e "$FILE"</code></td>
+      <td>$FILE existe. Si se indica un enlace simbólico, será cierta sólo si existe el enlace simbólico y el fichero apuntado. Es conveniente que esté entre comillas por el mismo motivo anterior.</td>
+   </tr>
+   <tr>
+      <td><code>-f "$FILE"</code></td>
+      <td>$FILE existe y es regular. Si se indica un enlace simbólico, el tipo es el del fichero apuntado.</td>
+   </tr>
+   <tr>
+      <td><code>-h "$FILE"</code></td>
+      <td>$FILE existe y es un enlace simbólico</td>
+   </tr>
+   <tr>
+      <td><code>-d "$DIR"</code></td>
+      <td>$DIR existe y es un fichero de tipo directorio</td>
+   </tr>
+   <tr>
+      <td><code>-p "$FILE"</code></td>
+      <td>$FILE existe y es un fichero especial tubería (pipe)</td>
+   </tr>
+   <tr>
+      <td><code>-b "$FILE"</code></td>
+      <td>$FILE existe y es un fichero especial de bloques</td>
+   </tr>
+   <tr>
+      <td><code>-c "$FILE"</code></td>
+      <td>$FILE existe y es un fichero especial de caracteres</td>
+   </tr>
+   <tr>
+      <td><code>-r "$FILE"</code></td>
+      <td>$FILE existe y puede leerse</td>
+   </tr>
+   <tr>
+      <td><code>-w "$FILE"</code></td>
+      <td>$FILE existe y puede modificarse</td>
+   </tr>
+   <tr>
+      <td><code>-x "$FILE"</code></td>
+      <td>$FILE existe y puede ejecutarse</td>
+   </tr>
+   <tr>
+      <td><code>-s "$FILE"</code></td>
+      <td>$FILE existe y su tamaño es mayor de cero bytes</td>
+   </tr>
+</table>
+
+
+Cualquiera de las condiciones anteriores puede ser precedida por el operador negación `!`, en cuyo caso la condición será cierta si no se satisface la comparación indicada. Por ejemplo, `! -d $DIR` se cumplirá si `$DIR` **NO** es un directorio.
+
+| Condiciones múltiples |  Significado  |
+|-----------------------|---------------|
+|  `condicion1  -a condicion2` |  AND: Verdadero si ambas condiciones son verdaderas  |
+|  `condicion1  -o condicion2` |  OR: Verdadero si se cumple alguna de las dos condiciones  |
+
+
+---
+El comando `test` se puede ejecutar sin necesidad de utilizarlo en una estructura de control. Escriba la siguiente instruccion y analice su comportamiento (pruebe asignando también 1 a la variable V y una cadena de texto):
+
+`V=0; [ $V -eq 0 ] && { echo ES; echo 0; } || echo ES 1`
+
+El siguiente comando imprime por pantalla si el usuario actual es root. Ejecútelo como root y como un usuario normal:
+
+<code>if [ "\`id -u`" -eq 0 ]; then echo ROOT; fi</code>
+
+Mire el contenido del siguiente script en su sistema y compruebe que tiene el permiso de ejecución:
+
+`script_if.sh`
+
+~~~
+#!/bin/sh
+
+FILE=/tmp/archivo
+if [ -r $FILE -a ! -w $FILE ]; then
+   echo Fichero $FILE existe y no es modificable
+else
+   echo Fichero no encontrado o es modificable
+fi
+
+VAR1=1; VAR2=1
+if [ $(($VAR1)) -ne $(($VAR2)) ]; then
+   echo Distintos
+elif ls /; then
+   :
+fi
+~~~
+
+Ejecute los comandos siguientes y analice el resultado:
+
+`rm –f /tmp/archivo`
+
+`./script_if.sh`
+
+Ejecute ahora los comandos siguientes y vuelva a analizar el resultado:
+
+`touch /tmp/archivo`
+
+`chmod –w /tmp/archivo`
+
+`./script_if.sh`
+
+---
