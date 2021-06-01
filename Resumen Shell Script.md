@@ -262,7 +262,7 @@ Se pueden crear y utilizar variables, que aquí se llaman parámetros:
 
 ___
 
-Mire el contenido del script script_variables.sh, que deberá contener lo siguiente:
+Mire el contenido del script `script_variables.sh`, que deberá contener lo siguiente:
 
 `script_variables.sh`
 
@@ -292,7 +292,7 @@ ___
 
 Existe un conjunto de variables que afectan al funcionamiento del shell. Por ejemplo: `HOME`, `PATH`, `LANG`,...
 
-Aquí vamos a destacar la variable `IFS` (Input Field Separators). El valor de esta variable es una lista de caracteres que se emplearán en el proceso de división de campos realizado tras el proceso de expansión (que se verá más adelante) y por el comando `read`. El valor por defecto es `<espacio><tab><nueva-línea>`. Podrá ver un ejemplo de uso de esta variable cuando realice los ejercicios propuestos (ver solución a script_user.sh).
+Aquí vamos a destacar la variable `IFS` (Input Field Separators). El valor de esta variable es una lista de caracteres que se emplearán en el proceso de división de campos realizado tras el proceso de expansión (que se verá más adelante) y por el comando `read`. El valor por defecto es `<espacio><tab><nueva-línea>`. Podrá ver un ejemplo de uso de esta variable cuando realice los ejercicios propuestos (ver solución a `script_user.sh`).
 
 
 #### Parámetros posicionales
@@ -988,3 +988,674 @@ Ejecute ahora los comandos siguientes y vuelva a analizar el resultado:
 `./script_if.sh`
 
 ---
+
+##### Condicional: case
+
+
+~~~
+case cadena_texto in
+  patron1) lista-compuesta1;;
+  patron2) lista-compuesta2;;
+  ...
+  * ) lista-defecto [;;] #coincide con todo
+esac
+~~~
+
+`cadena_texto` debe aparecer obligatoriamente en la misma línea que la palabra reservada `case`. Primero se expande `cadena_texto` (si es necesario) y busca el primer patrón que encaje con dicho valor.
+
+Los `patronN` se interpretan como cadenas de caracteres y si es necesario se expanden (por ejemplo, pueden contener variables). Admite los mismos caracteres que los usados para la expansión de ruta (`*`, `?` y `[]`). Asimismo, pueden usarse patrones múltiples mediante el operador `|` y opcionalmente pueden comenzar con el paréntesis:
+
+`patronA  | patronB)`
+
+`(patronA  | patronB)`
+
+`(patronC)`
+
+El doble punto y coma `;;` permite determinar el final de los elementos a interpretar cuando se cumpla su patrón asociado. Por ese motivo, el `;;` del último patrón puede omitirse.
+
+<table>
+   <tr>
+      <td>
+         <pre>
+case cadena_texto in
+  patron1)
+       cmd1;
+       cmd2;;
+esac
+         </pre>
+      </td>
+      <td>
+         <pre>
+case cadena_texto in
+  patron1 )
+       cmd1
+       cmd2
+esac
+         </pre>
+      </td>
+   </tr>
+   <tr colspan=2>
+      <td><pre>case cadena_texto in patron1) cmd1; cmd2;; esac</pre></td>
+   </tr>
+   <tr colspan=2>
+      <td><pre>case cadena_texto in (patron1) cmd1; cmd2; esac</pre></td>
+   </tr>
+<table>
+
+---
+
+1. Mire el contenido del siguiente script en su sistema y compruebe que tiene el permiso de ejecución:
+
+`script_case.sh`
+
+~~~
+#!/bin/sh
+
+case $1 in
+    archivo | file)
+        echo Archivo ;;
+    *.c)
+        echo Fichero C ;;
+    *)
+        echo Error
+        echo Pruebe otro ;;
+esac
+~~~
+
+2. Ejecute los comandos siguientes y analice el resultado:
+
+`./script_case.sh archivo`
+
+`./script_case.sh file`
+
+`./script_case.sh file.c`
+
+`./script_case.sh file.c++`
+
+---
+
+##### Bucles incondicionales: for
+
+~~~
+for VAR in lista_valores; do
+  lista-compuesta
+done
+~~~
+
+El nombre de la variable `VAR` debe aparecer obligatoriamente junto con la palabra reservada `for` en la misma línea. `lista_valores` debe estar obligatoriamente en la misma línea que la palabra reservada `in`. El punto y coma `;` puede sustituirse por un salto de línea, y viceversa.
+
+<table>
+   <tr colspan=2>
+      <td><pre>for VAR in lista_valores; do lista-compuesta done</pre></td>
+   <tr>
+   <tr>
+      <td>
+         <pre>
+for VAR
+in lista_valores
+do
+  lista-compuesta
+done
+         </pre>
+      </td>
+      <td>
+         <pre>
+for VAR in lista_valores
+do
+  lista-compuesta
+done
+         </pre>
+      </td>
+   </tr>
+</table>
+
+`lista_valores` se corresponde con un conjunto de valores (tomándose cada valor como una cadena de caracteres que puede ser objeto de expansión y como caracteres de separación los caracteres definidos en la variable `IFS`). La estructura `for` define la variable `VAR` (si no ha sido previamente definida). Para cada uno de los valores del resultado de expandir `lista_valores`, la estructura inicializa la variable `VAR` con dicho valor y realiza una iteración (ejecutando `lista-compuesta`, en la cual suele ser habitual acceder al valor de la variable `VAR`).
+
+Es posible omitir `in lista_valores`. Si se omite equivale a haber escrito: `in "$@"`
+
+---
+
+1. Ejecute el siguiente comando y compruebe como se puede utilizar una expansión de ruta dentro de un bucle `for`:
+
+`for i in ~/.*; do echo Fichero oculto: $i; done`
+
+2. Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución, invóquelo y compruebe el contenido del fichero *"ficherosalida"* que crea:
+
+`script_for1.sh`
+~~~
+#!/bin/sh
+
+for i in 1 2 3; do
+    echo "Iteracion: $i"
+done > ficherosalida
+~~~
+
+`script_for2.sh`
+~~~
+#!/bin/sh
+
+for file in `ls /`; do
+    echo "Fichero: $file"
+done
+~~~ 
+
+Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución e invóquelo.
+
+---
+
+Suele ser habitual el uso del comando externo `seq` para generar una lista de valores. Si bien este comando no está recogido en el estándar `POSIX`, es habitual su presencia en la mayoría de los sistemas UNIX. El comando `seq` presenta la sintaxis:
+
+`seq   valor_inicial   valor_final`
+
+siendo ambos valores números enteros. La salida del comando es la secuencia de números enteros entre ambos valores extremos indicados.
+
+---
+
+1. Ejecute el comando siguiente y observe su salida:
+
+`seq 1 10`
+
+2. Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución general e invóquelo:
+
+`script_for_seq.sh`
+~~~
+#!/bin/sh
+
+for i in `seq 1 3`; do
+    echo "Iteracion: $i"
+done
+~~~ 
+
+Compruebe cómo se obtiene el mismo resultado que se tenía al invocar el fichero `script_for1.sh`.
+
+---
+
+##### Bucles condicionales: while y until
+
+<table>
+   <tr>
+      <td>
+         <pre>
+while lista-comp-condicion do
+  lista-compuesta
+done
+         </pre>
+      </td>
+   </tr>
+   <tr>
+      <td>
+         <pre>
+until lista-comp-condicion do
+  lista-compuesta
+done
+         </pre>
+      </td>
+   </tr>
+</table>
+
+La `lista-comp-condicion` es una lista compuesta que se rige por las mismas directrices indicadas en la estructura `if`. La estructura:
+
+* `while` va iterando (interpreta la `lista-compuesta`) mientras se cumpla la condición indicada (`lista-comp-condicion` devuelve el valor `0`)
+* `until` va iterando (interpreta la `lista-compuesta`) mientras **NO** se cumpla la condición indicada (`lista-comp-condicion` devuelve un valor **distinto** de `0`).
+
+Así, por ejemplo, serían válidas y equivalentes las sintaxis siguientes, si la condición del `until` es la condición del `while` negada:
+
+<table>
+   <tr>
+      <td>
+         <pre>
+while lista-comp-condW
+do
+   cmd1
+   cmd2
+done
+			</pre>
+      </td>
+      <td>
+         <pre>
+until lista-comp-condU
+do
+   cmd1
+   cmd2
+done
+         </pre>
+      </td>
+   </tr>
+   <tr colspan=2>
+      <td><pre>while lista-comp-condW ; do cmd1; cmd2; done</pre></td>
+	</tr>	
+   <tr>
+      <td><pre>while lista-comp-condW ; do { cmd1; cmd2; } done</pre></td>
+   </tr>
+</table>
+		
+---
+
+1. Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución e invóquelo:
+
+`script_while.sh`
+~~~
+#!/bin/sh
+
+CONTADOR=0
+while [ $CONTADOR – lt 3 ]; do
+    echo "Contador: $CONTADOR "
+    CONTADOR=$(($CONTADOR+1))
+done
+~~~ 
+
+2. Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución e invóquelo:
+
+`script_until.sh`
+~~~
+#!/bin/sh
+
+CONTADOR=0
+until [ $CONTADOR – ge 3]]; do
+    echo El contador es $CONTADOR
+    CONTADOR=$(($CONTADOR+1))
+done
+~~~
+Podrá comprobar cómo ambos scripts devuelven la misma salida.
+
+---
+
+##### Ruptura de sentencias de control
+
+`continue`: utilizado en estructuras de control repetitivas para detener la iteración actual y continuar con la siguiente. Su sintaxis es:
+
+`continue  [n]`
+
+El parámetro opcional `n` es un número entero positivo que permite especificar la estructura de control en la que se desea detener la iteración. Si se tienen varias estructuras de control anidadas, la estructura actual en la que se encuentra el continue corresponde a la estructura `1`; la estructura superior que engloba a ésta sería la estructura `2`, y así sucesivamente. Así, el valor de `n` referencia a la estructura de control en la que deseamos detener la iteración actual y continuar con la siguiente (por omisión, `"n=1"`).
+
+`break`: utilizado en estructuras de control repetitivas para detener todas las iteraciones restantes de la estructura de control actual. Su sintaxis es:
+
+`break  [n]`
+
+El parámetro opcional `n` es un número entero positivo que permite indicar si se desean cancelar varias estructuras de control anidadas (por omisión, `"n=1"`, que referencia a la estructura actual en la que se encuentra el `break`).
+
+#### Funciones
+
+<table>
+  <tr>
+    <th>Definición</th>
+    <td><code>fnombre() comando-compuesto [redir]</code></td>
+  </tr>
+  <tr>
+    <th>Invocación</th>
+    <td><code>fnombre  [arg1  arg2 … ]</code></td>
+  </tr>
+</table>
+
+El paréntesis siempre debe estar vacío (sólo indica que se está definiendo una función). Pueden insertarse espacios antes, entre y después del paréntesis. El comando compuesto puede ser cualquier de los que se han visto (agrupación de comandos, estructuras condicionales, estructuras repetitivas). Opcionalmente pueden aplicarse redirecciones a la función (afecta a los comandos que contiene, salvo que contengan una redirección explícita).
+
+<table>
+   <tr>
+      <td>
+         <pre>
+fnombre(){
+  comando1
+  comando2
+}
+			</pre>
+      </td>
+      <td>
+         <pre>
+fnombre(){
+  comando1;
+  comando2;
+}
+         </pre>
+      </td>
+   </tr>
+   <tr colspan=2>
+      <td><pre>fnombre() { comando1; comando2; }</pre></td>
+	</tr>	
+</table>
+
+Al nombrado de las funciones, se aplican los mismos criterios antes expuestos para el nombrado de las variables.
+
+El estándar permite que dentro de una función se invoque a otra. Los argumentos pasados a la función en su invocación son accesibles desde el cuerpo de la función mediante los parámetros posicionales `$1`, `$2`,..., `$9`, `${10}`,... Por tanto, dentro de la función, los parámetros posicionales **no** corresponden a los argumentos usados en la invocación del script.
+
+Al igual que las variables, las funciones son:
+
+* Locales: sólo existen en el proceso shell en que son definidas.
+* Sólo son accesibles desde el momento de su definición hacia abajo del script, esto es, siempre deben definirse primero e invocarse después (no puede invocarse a una función que es definida más adelante).
+* Dentro de la función son visibles todas las variables y funciones definidas antes de su invocación. Y las variables definidas dentro de la función son visibles fuera tras la invocación de la función.
+
+Dentro del cuerpo de la función suele ser habitual el uso del comando `return`, el cual provoca la salida inmediata de la función con el valor de retorno (número) indicado:
+
+`return  [n]`
+
+Si no se indica ningún valor de retorno, la función devuelve el valor del último comando ejecutado. Como siempre, el valor devuelto por la función puede obtenerse con la variable `$?`. `return` también puede utilizarse para terminar un script invocado implícitamente con `.`.
+
+---
+
+1.Mire el contenido del siguiente script en su sistema, compruebe que tiene el permiso de ejecución,  invóquelo con 2 números enteros como argumentos y analice su funcionamiento :
+
+`script_funcion.sh`
+~~~
+#!/bin/sh
+
+suma () {
+    C=$(($1+$2))
+    echo "Suma: $C"
+    return $C
+    echo "No llega"
+}
+
+suma 1 2
+suma $1 $2 #suma los 2 primeros argumentos
+echo "Valor devuelto: " $? 
+~~~
+
+---
+
+### Uso de comandos y aplicaciones
+
+POSIX recoge una lista de comandos que deben ser implementados en cualquier sistema, clasificándolos según sean ordenes internas del shell (built-in) o aplicaciones externas.
+
+#### Comandos internos
+
+Los comandos internos corresponden a órdenes interpretadas por el propio shell (luego no existe ningún fichero ejecutable asociado al comando). Se distinguen dos tipos de comandos internos:
+
+* Especiales: un error producido al ejecutar este comando da lugar a que el *shell termine*. Por consiguiente, el script termina con un **error** y un valor de retorno *mayor de cero* .
+* Regulares: el shell no tiene que terminar cuando se produce un error en estos comandos.
+
+|  Comando interno especial  |  Descripción  |
+|----------------------------|---------------|
+|  `break`,`continue`, `export`, `return`, `unset`, `.` |  Se han descrito anteriormente.  |
+|  `:` |  Comando nulo. Se suele utilizar en estructuras de control que requieren un comando para ser sintácticamente correctas, pero no se quiere hacer nada.  |
+|  `eval` |  Permite crear comandos a partir de sus argumentos (ver más adelante)  |
+|  `exec` |  Ejecuta comandos (sustituyendo al shell actual) y abre, cierra y copia descriptores de fichero  |
+|  `exit` |  Provoca que el shell termine (ver más adelante)  |
+|  `readonly` |  Permite hacer que una variable sea de sólo lectura (no admite asignaciones)  |
+|  `set`  |  Establece opciones del proceso shell actual y modifica los parámetros posicionales.  |
+|  `shift`  |  Elimina el número indicado de parámetros posicionales empezando desde el 1, desplazando el resto de parámetros a posiciones inferiores.  |
+|  `times`  |  Muestra los tiempos de procesamiento del shell y sus procesos hijos.  |
+|  `trap`  |  Permite atrapar o ignorar señales del sistema.  |
+
+Como comandos internos regulares, el estándar define los siguientes:
+
+<table>
+  <tr>
+    <th>Básicos regulares</th>
+    <td><code>bg, cd, false, fg, jobs, kill, pwd, read, true, wait</code></td>
+  </tr>
+  <tr>
+    <th>Para Profundizar regulares</th>
+    <td><code>alias, command, fc, getopts, newgrp, umask, unalias</code></td>
+  </tr>
+</table>
+
+##### Salida del proceso shell actual, exit
+
+`exit [n]`
+
+`exit` provoca la eliminación inmediata del proceso correspondiente al shell que está leyendo el script. El parámetro opcional es un número entero que corresponde al valor devuelto por el script. Si no se indica ningún parámetro, el valor devuelto por el script será el del último comando ejecutado.
+
+---
+
+1. Abra una consola de comandos. Mediante el comando `su` abra una sesión con el superusuario. Al abrir la sesión con `root`, se ha creado un nuevo proceso en memoria correspondiente al shell encargado del intérprete de comando en la sesión del `root`. Use el comando `ps ax` para localizar dicho proceso.
+
+2. Ejecute el comando `exit`, volviendo al usuario normal. Esto habrá provocado la eliminación del proceso shell encargado de la línea de comandos como en la que trabajaba `root`. Ejecute de nuevo `ps ax` comprobando cómo dicho proceso ha desaparecido
+
+3. Mire el contenido del script `script_exit.sh`, que deberá contener lo siguiente:
+
+`script_exit.sh`
+~~~
+echo Dentro del script
+exit 3
+echo Fuera del script
+~~~ 
+
+4. Compruebe que dispone del permiso de ejecución general. Vuelva a usar el comando `su` para abrir una  sesión con el superusuario. Desde dicha sesión ejecute el comando anterior mediante las siguientes invocaciones:
+
+`/bin/bash   script_exit.sh`
+
+`./script_exit.sh`
+
+Ambas invocaciones provocan la creación de un subshell (un nuevo proceso shell) encargado de leer el script. Por ello, cuando se llega al comando `exit` se para la interpretación del script y dicho subshell es eliminado, volviendo al proceso shell padre correspondiente a la línea de comandos desde la que estábamos trabajando.
+
+Ejecute el comando `echo $?` para comprobar cómo el script ha devuelto el código de error `"3"`.
+
+5. Ejecute los siguientes comandos:
+   * `script_exit.sh && echo Hola`, comprobando que no se imprime la cadena `Hola` debido a que el script devuelve un código de error (`>0`).
+   * `script_exit.sh || echo Hola`, comprobando que ahora sí se imprime.
+   * Edite el script para que el comando `exit` devuelva cero (`exit 0`), y vuelva a invocar el comando `script_exit.sh && echo Hola`, comprobando que ahora también se imprime la cadena `Hola`.
+
+6. Vuelva a invocar el script pero ahora mediante:
+
+`.  script_exit.sh`
+
+Verá cómo la sesión del `root` se cierra automáticamente y vuelve a la sesión del usuario normal. Esto se debe a que en este caso no se está creando ningún nuevo subshell, sino que el propio shell de la línea de comandos del usuario root es el encargado de interpretar el script. Al llegar al comando `exit`, éste provoca la eliminación del proceso shell que lee el script, esto es, la eliminación de la sesión del usuario `root`.
+
+Ejecute el comando `echo $?` para comprobar cómo el script ha devuelto el código de error `0` (sin error) correctamente.
+
+7. Ejecute y analice el funcionamiento de los siguientes comandos:
+
+`sh -c "exit 0" && echo "Sin error1A" || echo "Con error1B"`
+
+`sh -c "exit 1" && echo "Sin error2A" || echo "Con error2B"`
+
+---
+
+##### Entrada estándar a un shell-script, read
+
+`read` lee una línea de la entrada estándar (teclado) y la guarda en variables. Solo funciona en shell interactivos (leyendo la entrada del teclado), de lo contrario no hace nada.
+
+`read VAR1 [VAR2 …]`
+
+Este comando espera a que el usuario introduzca una línea de texto incluyendo espacios (la entrada termina cuando el usuario pulsa la tecla *"Intro"*; la pulsación *"Intro"* no forma parte del valor asignado a la cadena). Esta línea se divide en campos (según la variable `IFS`). Tras ello, el comando define las variables dadas como argumentos, inicializándolas con los campos obtenidos en la división. Si hay más campos que variables, los campos restantes se asignan a la última variable. Si hay más variables que campos, las variables sobrantes reciben como valor la cadena vacía `""`.
+
+Algunos intérpretes de comandos como `bash` añaden otras opciones a este comando, como la posibilidad de imprimir un mensaje usando la opción `-p`
+
+---
+
+Cree el script `script_read.sh` que contenga lo siguiente:
+
+`script_read.sh`
+~~~
+echo " Introduzca una cadena "
+read CAD
+echo " Cadena introducida: $CAD "
+~~~
+Asígnele el permiso de ejecución general, invóquelo y analice su funcionamiento.
+
+---
+
+El comando `read` también puede ser útil, por ejemplo, para detener la interpretación del script hasta que el usuario pulse una tecla:
+
+---
+
+Cree el script `script_read_pause.sh` que contenga lo siguiente:
+
+`script_read_pause.sh`
+~~~
+echo "Pulse intro para continuar..."
+read CAD
+echo " Continuamos... "
+~~~
+
+Asígnele el permiso de ejecución general, invóquelo y analice su funcionamiento.
+
+---
+
+Resulta habitual el uso de estructuras `while`, combinadas con `case` y `read`, para crear menús interactivos, permitiendo mantenerse dentro del menú.
+
+---
+
+1. Edite el script `script_case_menu.sh` para que tenga el siguiente contenido:
+
+`script_case_menu.sh`
+
+~~~
+#!/bin/sh
+clear
+SALIR=0
+OPCION=0
+while [ $SALIR -eq 0 ]; do
+   echo "Menu:"
+   echo "1) Opcion 1"
+   echo "2) Opcion 2"
+   echo "3) Salir"
+   echo "Opcion seleccionada: "
+   read OPCION
+   case $OPCION in
+       1)
+           echo "Opcion 1 seleccionada" ;;
+       2)
+           echo "Opcion 2 seleccionada" ;;
+       3)
+           SALIR=1 ;;
+       *)
+         echo "Opcion erronea";;
+   esac
+done
+~~~
+
+El comando `clear`, tampoco recogido en el estándar `POSIX`, también suele encontrarse habitualmente en la mayoría de los sistemas `UNIX`. Su funcionalidad es, simplemente, limpiar la información impresa en la consola de comandos.
+
+2. Ejecute el comando siguiente y seleccione las opciones del menú:
+
+`script_case_menu.sh`
+
+---
+
+##### Construcción de comandos en tiempo de ejecución: eval
+
+El comando `eval` construye un comando mediante la concatenación de sus argumentos (pueden ser variables, etc.) separados por espacios. Dicho comando construido es leído por el shell e interpretado. La sintaxis del comando es:
+
+`eval [argumentos …]`
+
+Un posible uso es la creación de referencias indirectas a variables (parecido a usar punteros en lenguaje de programación C). En la tarea siguiente se muestra esto.
+
+---
+
+Cree el script `script_eval.sh` que contenga lo siguiente:
+
+`script_eval.sh`
+~~~
+#ejemplo de referencia indirecta con eval
+VAR="Texto"
+REF=VAR             #REF es una variable que vale VAR
+eval OTRA='$'$REF   #equivale a ejecutar OTRA=$VAR
+echo $OTRA          #se ha accedido al contenido de VAR a través de REF
+~~~
+
+Asígnele el permiso de ejecución, invóquelo y analice su funcionamiento.
+
+---
+
+#### Comandos externos
+
+Los comandos externos corresponden a ficheros ejecutables externos al shell. Cualquier posible aplicación pertenecería a esta categoría de comandos ( `ps`, `firefox`, `emacs`,...). El estándar POSIX recoge una lista de comandos externos que aconsejablemente deberían estar en un sistema UNIX, clasificándolos en obligatorios u opcionales según se exija o no su implementación para satisfacer el estándar. Entre los comandos externos obligatorios, el estándar define los siguientes:
+
+<table>
+  <tr>
+    <th>Básicos</th>
+    <td><code>cat, chmod, chown, cmp, cp, date, dirname, echo, expr, printf</code></td>
+  </tr>
+  <tr>
+    <th>Para Profundizar</th>
+    <td><code>awk, basename, chgrp</code></td>
+  </tr>
+</table>
+
+---
+
+Busque información sobre el comando `echo` y `printf`. Ejecute los siguientes comandos y analice su funcionamiento:
+
+`echo Uno`
+
+`echo –n Uno; echo Dos`
+
+`echo –e "Uno\nDos"`
+
+`NOMBRE=Ana`
+
+`printf "Hola %s. Adios %s\n" $NOMBRE $NOMBRE`
+
+---
+
+##  Depuración de shell-scripts
+
+Si bien la programación de shell-scripts no se puede depurar fácilmente, los shells suelen ofrecer algunos mecanismos en este aspecto. En concreto, tanto `"bash"` como `"dash"` ofrecen los siguientes argumentos, que pueden usarse simultáneamente:
+
+<table>
+   <tr>
+      <td><code>-x</code></td>
+      <td>Traza: expande cada orden simple, e imprime por pantalla la orden con sus argumentos, y a continuación su salida.</td>
+   </tr>
+   <tr>
+      <td><code>-v</code></td>
+      <td>Verbose: Imprime en pantalla cada elemento completo del script (estructura de control, ...) y a continuación su salida.</td>
+   </tr>
+</table>
+
+También es posible depurar sólo parte del script insertando en él los siguientes comandos (pueden usarse igualmente en la propia línea de comandos):
+
+<table>
+   <tr>
+      <td><code>set -x<br/>set –xv</code></td>
+      <td>Activa las trazas/verbose. Ubicarlo justo antes del trozo del script que se desea depurar.</td>
+   </tr>
+   <tr>
+      <td><code>set +x<br/>set +xv/code></td>
+      <td>Desactiva las trazas/verbose. Ubicarlo justo después del trozo del script que se desea depurar.</td>
+   </tr>
+</table>
+ 
+
+---
+
+1. Mire el contenido del siguiente script en su sistema y compruebe que tiene el permiso de ejecución general:
+
+`script_depuracion.sh`
+~~~
+#!/bin/sh
+echo Hola
+if true; then
+     echo hola2
+     ls /
+fi
+~~~
+
+2. Invoque dicho script con las siguientes opciones de depuración y analice la salida:
+
+`/bin/bash       script_depuracion.sh`
+
+`/bin/bash  -x   script_depuracion.sh`
+
+`/bin/bash  -v   script_depuracion.sh`
+
+`/bin/bash  -xv  script_depuracion.sh`
+
+`/bin/dash  -x   script_depuracion.sh`
+
+`/bin/dash  -v   script_depuracion.sh`
+
+`/bin/dash  -xv  script_depuracion.sh`
+
+3. Modifique el script para que tenga el siguiente contenido:
+
+`script_depuracion2.sh`
+~~~
+#!/bin/sh
+echo Hola
+set -xv
+if true; then
+     echo hola2
+     ls /
+fi 
+set +xv
+~~~
+
+4. Invoque dicho script con los siguientes comandos y analice la salida:
+
+`script_depuracion2.sh`
+
+`/bin/dash  script_depuracion2.sh`
+
+`/bin/bash  script_depuracion2.sh`
+
