@@ -1659,3 +1659,4 @@ set +xv
 
 `/bin/bash  script_depuracion2.sh`
 
+[Propuesta de ejercicios](EjerciciosShellScript.md)

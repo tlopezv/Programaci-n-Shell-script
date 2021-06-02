@@ -575,7 +575,7 @@ En otros lenguajes de programación se conocen como *estructuras de control*. Si
 
 ##### Secuencial (agrupación de comandos)
 
-xisten dos formas de agrupar comandos, con los siguientes formatos:
+Existen dos formas de agrupar comandos, con los siguientes formatos:
 
 `( lista-compuesta )`
 
@@ -1376,3 +1376,5 @@ set +xv
 `/bin/dash  script_depuracion2.sh`
 
 `/bin/bash  script_depuracion2.sh`
+
+[Propuesta de ejercicios](EjerciciosShellScript.md)

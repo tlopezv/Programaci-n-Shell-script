@@ -376,7 +376,7 @@ done
 
 ----
 
-*NOTA:* Los coamentarios en shell se ponen con *#*
+*NOTA:* Los comentarios en shell se ponen con *#*
 
 ----
 
