@@ -119,8 +119,8 @@ Si ejecutaramos poniendo
 
 ## Lectura de parámetros por teclado
 ~~~~
-echo "Introduce un valor por teclado`
-read variable`
+echo "Introduce un valor por teclado"
+read variable
 ~~~~
 
 ~~~~~
@@ -181,7 +181,7 @@ echo $2
 `echo -n`--> *elimina el INTRO del final*
 
 ~~~~
-$ echo -h "hola"
+$ echo -n "hola"
 $ echo "adios"
 ~~~~
 

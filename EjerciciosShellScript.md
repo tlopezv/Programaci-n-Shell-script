@@ -348,7 +348,7 @@ done
 
 >>`sudo route add -net 192.168.0.0 netmask 255.255.255.0 gw 192.168.1.1 dev enp0s3`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;añadir una nueva ruta estática para que todos los paquetes enviados a la red *192.168.0.0/24* sea dirigido a la interfaz  *enp0s3* y use la puerta de enlace *192.168.1.1*.
 
->>`sudo route del -net 192.168.0.0 netmask 255.255.255.0 gw 192.168.1.1 dev enp0s3``&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Elimina la entrada anterior de la *tabla de enrutamiento*.
+>>`sudo route del -net 192.168.0.0 netmask 255.255.255.0 gw 192.168.1.1 dev enp0s3`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Elimina la entrada anterior de la *tabla de enrutamiento*.
 
 3. `script_copy.sh`: script que copie un fichero regular en otro, ambos pasados como argumentos. Si no se le pasan los argumentos, lo comprobará, y solicitará al usuario que los introduzca interactivamente.
 
@@ -419,3 +419,191 @@ fi
 >>`cp -r Fotos_movil /run/media/Datos`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;copia la carpeta *Fotos_movil* y todo su contenido (la opción **-r** o *“recursive”* indica que debe copiar la carpeta y el contenido de la misma) dentro de la ruta */run/media/Datos*.
 
 >>`cp -r -u -v Fotos_movil /run/media/Datos`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;la opción **-u** (*“update“*) para que actualice el contenido en la carpeta destino y sólo copie aquellas fotos o datos que **no** estuvieran ya en el destino. Y con la opción **-v** (*“verbose“*) el comando muestra en pantalla las tareas que va realizando. También se pueden escribir las opciones del comando como: `cp -ruv Fotos_movil /run/mediaDatos`
+
+4. `script_print.sh`: script que imprima en pantalla el contenido de un fichero de datos, o el contenido de todos los ficheros de un directorio, según se le pase como argumento un *fichero regular* o un *directorio*.
+
+`script_print.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script para la impresion del contenido del fichero (o de los ficheros del
+# directorio) pasado como argumento
+
+clear
+
+if [ -f $1 ]; then
+ printf "Impresión en pantalla del fichero \"$1\":\n\n"
+ cat $1 | more
+elif [ -d $1 ]; then
+ printf "Impresión en pantalla de los ficheros del directorio \"$1\":\n\n"
+ cd $1; cat * | more
+else
+ printf "\"$1\" no es un fichero ni un directorio\n"
+fi
+
+~~~
+
+5. `script_borrar.sh`: script que borre con confirmación todos los ficheros pasados como argumentos.
+
+`script_borrar.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script para el borrado de los ficheros pasados como argumentos
+
+# No hay ningún problema en usar comodines en los ficheros pasados, dado que son
+# interpretados por el comando "rm"
+
+for fichero in $*
+do
+   # El parametro "-i" obliga a pedir confirmación
+   rm -i $fichero
+done
+
+
+# Solución alternativa
+# while [ "$*" != "" ]
+# do
+# 	rm -i $1
+# 	shift
+# done
+~~~
+
+> NOTA:
+>> Comando `rm`:
+    
+>>`rm`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eliminar archivos de un directorio.
+
+>>`rm -ir tmp`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;eliminará *reiterativamente* los contenidos de todos los subdirectorios en el directorio **tmp**, *pidiendo confirmación* para la eliminación de cada archivo, y después elimina el propio directorio **tmp**.
+
+>> `rm -f tmp`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Elimina todos los archivos en un directorio sin preguntar al usuario.
+
+6. `script_sesiones.sh`: script al que, pasándole el login de un usuario, devuelva cuántas sesiones tiene abiertas en el sistema.
+
+`script_sesiones.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script que imprime el número de sesiones actuales del usuario pasado como argumento
+if test -z "$1"; then
+	set `id -un`  # $1=nombre del usuario actual
+fi
+sesiones=`who | grep -e "^$1 " | wc -l`
+printf "El usuario \"%s\" tiene abiertas %d sesiones\n" $1 $sesiones
+~~~
+
+> NOTA:
+>> Comando `id`:
+    
+>>`id`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;muestra el identificador actual y real de usuarios y grupos.
+
+>>`id -u`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Muestra el **ID** del usuario efectivo como un número.
+
+>>`id -u -n`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Muestra el *nombre* del usuario efectivo.
+
+---
+
+>> Comando `grep`:
+    
+>>`grep`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;selecciona y muestra las líneas de los archivos que coincidan con la cadena o patrón dados.
+
+>>`grep -e "^hola " archivotexto`&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Busca en *archivotexto* el patrón (opción **-e**) *hola* y un espacio (patrón **^** significa que *empiece por*).
+
+7. `script_mostrar.sh`: script que para cada argumento que reciba (puede recibir una lista de argumentos) realice una de las siguientes operaciones:
+   * Si es un directorio, ha de listar los ficheros que contiene.
+   * Si es un fichero regular, tiene que imprimir su contenido por pantalla.
+   * En otro caso, debe indicar que no es ni un fichero regular ni un directorio (por ejemplo, un fichero de bloques o de caracteres del directorio */dev*).
+
+`script_mostrar.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script para la impresion del contenido de los ficheros y listado de los directorios pasados como argumentos
+
+clear
+
+for fich in $*
+do
+   echo
+   if [ -d "$fich" ]; then
+      echo "Mostrando el listado del directorio \"$fich\":"
+      ls -la "$fich" | more
+   elif [ -f "$fich" ]; then
+      echo "Mostrando el contenido del archivo \"$fich\":"
+      cat "$fich"
+   else
+      echo "El parametro \"$fich\" no corresponde con ningun archivo ni directorio"
+   fi
+done
+
+~~~
+
+8. `script_ejecucion.sh`: script que asigne el permiso de ejecución a los ficheros regulares o directorios pasados como argumento (puede admitir una lista de ficheros).
+
+`script_ejecucion.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script para la asignación del permiso de ejecución a los ficheros pasados como argumentos
+
+
+for fich in $*
+do
+    if [ -f "$fich" ]; then
+         echo "Asignando permiso de ejecución (de usuario) al fichero '$fich'..."
+         chmod u+x "$fich"
+    elif [ -d "$fich" ]; then
+         echo "Asignando permiso de ejecución (de usuario) al directorio '$fich'..."
+         chmod u+x "$fich"
+    else
+        echo "El parámetro '$fich' no corresponde con ningún fichero ni directorio"
+    fi
+done
+
+~~~
+
+9. `script_doble.sh`: script que pida un número por teclado y calcule su doble. Comprobará que el número introducido es válido y, antes de terminar, preguntará si deseamos calcular otro doble, en cuyo caso no terminará.
+
+`script_doble.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script que calcula el doble de un número solicitado
+
+#Función que comprueba si el valor del primer argumento es un número entero
+comprueba_entero()
+{
+    echo $1 | grep -q "^-\?[0-9]\+$" 2>&1
+    #devuelve 0 si $1 cumple el patrón del grep: comienza con un "-" opcional,
+    # seguido de digitos del 0 al 9 y termina. En caso contrario devuelve 1
+}
+
+SEGUIR=0
+while [ "$SEGUIR" -eq "0" ]; do
+    clear
+    printf "CALCULO DEL VALOR DOBLE DE UN NUMERO\n"
+    # Recuerde que en las expresiones aritmeticas, las cadenas de caracteres
+    # son interpretadas como el valor "0"
+    printf "Introduzca un número entero: "
+    read num
+    if [ -z "$num" ]; then
+        printf "No ha introducido ningún valor\n"
+    elif ! comprueba_entero "$num"; then
+	printf "El valor introducido no es un número entero\n"
+    else
+        printf "2 * %d = %d\n" $num $((2*$num))
+    fi
+    printf "\nSi desea calcular otro doble, escriba \"S\" [N]: "
+    read RESP
+    if [ "$RESP" != "S" -a "$RESP" != "s" ]; then
+       SEGUIR=1
+    fi
+done
+
+~~~

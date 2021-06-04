@@ -1319,7 +1319,7 @@ También es posible depurar sólo parte del script insertando en él los siguien
       <td>Activa las trazas/verbose. Ubicarlo justo antes del trozo del script que se desea depurar.</td>
    </tr>
    <tr>
-      <td><code>set +x<br/>set +xv/code></td>
+      <td><code>set +x<br/>set +xv</code></td>
       <td>Desactiva las trazas/verbose. Ubicarlo justo después del trozo del script que se desea depurar.</td>
    </tr>
 </table>
