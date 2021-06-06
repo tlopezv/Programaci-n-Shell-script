@@ -607,3 +607,675 @@ while [ "$SEGUIR" -eq "0" ]; do
 done
 
 ~~~
+
+10. `script_tipos.sh`: script que devuelva el número de ficheros de cada tipo (ficheros regulares o directorios) que hay en una determinada carpeta, así como sus nombres. Tendrá un único argumento (opcional) que será la carpeta a explorar. Si se omite dicho argumento, se asumirá el directorio actual. Devolverá 0 (éxito) si se ha invocado de forma correcta o 1 (error) en caso contrario.
+
+`script_tipos.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script que calcula el número de ficheros de cada tipo (regulares/directorios) en una carpeta
+
+clear
+DIR=$1
+if [ -z "$DIR" ]; then
+   printf "Sin argumentos. Usando el directorio actual '$(pwd)'\n"
+   DIR=`pwd`
+elif [ ! -d "${DIR}" ]; then
+   printf "El parámetro introducido no corresponde con un directorio\n"
+   exit 1
+fi
+
+printf "\nFicheros regulares/Directorios de la carpeta '$DIR':\n\n"
+
+NFICH=0
+NDIR=0
+for arch in `ls "$DIR"`
+do
+    if [ -f "$DIR/$arch" ]; then
+        NFICH=$(($NFICH+1))
+        printf "Fichero regular: $arch\n"
+    elif [ -d "$DIR/$arch" ]; then
+        NDIR=$(($NDIR+1))
+        printf "Directorio: $arch\n"
+    fi
+done
+
+printf "\nRESUMEN:\n\
+	  Número de ficheros regulares: $NFICH\n \
+	  Número de directorios: $NDIR\n"
+
+# Innecesario:
+# exit 0
+
+~~~
+
+11. `script_user.sh`: script que reciba como argumento el login de un usuario e imprima por pantalla la siguiente información: login, nombre completo del usuario, directorio home, shell que utiliza, número de sesiones actualmente abiertas y procesos pertenecientes a dicho usuario. El script debe permitir las siguientes opciones:
+   * `-p`: sólo muestra la información de los procesos.
+   * `-u`: muestra toda la información excepto la referente a los procesos.
+   * `--help`: muestra información de ayuda (uso del script).
+
+El script debe comprobar si los argumentos pasados son correctos, así como la existencia del usuario indicado. Como código de error podrá devolver 0 (éxito), 1 (sintaxis de invocación errónea), 2 (usuario no existe).
+
+`script_user.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script que imprime información del usuario pasado como argumento
+# Sintaxis:
+#   script_user.sh         user
+#   script_user.sh  -p     user
+#   script_user.sh  -u     user
+#   script_user.sh  --help user
+#
+# + "-p": solo muestra la información de los procesos
+# + "-u": mostrar toda la información salvo la referente a los procesos
+# "--help": muestra la sintaxis de uso del script
+# NOTA: Los parámetros pueden estar antes o después del "user"
+
+#### VARIABLES ####
+PARp="N"
+PARu="N"
+PARh="N"
+USER="N"
+
+
+#### FUNCIONES ####
+# Función que permite obtener el nombre del script actual
+# para cualquiera de las posibles formas de invocación
+NOMBRE=""
+nombre_script()
+{
+  # Esta función es opcional
+  # Comprobamos si se ha usado ".  script" o "bash  script"
+  NOMBRE=`basename $BASH_SOURCE 2> /dev/null`
+  CHECK=$?
+  if [ $CHECK -ne 0 ]; then
+     # Si no se ha usado ". script", sino "script" o "/ruta/script"
+     NOMBRE=`basename $0`
+  fi
+}
+
+# Función que imprime la sintaxis de uso del script
+ayuda()
+{
+   nombre_script
+   cat <<- FIN
+		Script que imprime información del usuario pasado como argumento
+
+		Sintaxis:
+		${NOMBRE}         user
+		${NOMBRE}  -p     user
+		${NOMBRE}  -u     user
+		${NOMBRE}  --help user
+
+		Parametros:
+		  -p	 	solo muestra la información de los procesos
+		  -u	 	mostrar toda la información salvo la referente a los procesos
+		  --help	muestra la sintaxis de uso del script
+		NOTA: Los parámetros pueden estar antes o después del "user"
+
+	FIN
+
+}
+
+
+# Función que busca en el fichero pasado como primer argumento ($1) las lineas cuyo
+# campo de la posición N=$2 (empezando por "0") tenga EXACTAMENTE el valor X=$3, usando el
+# carácter o caracteres "S"=$4 como separador de campos.
+# Devuelve en la variable global "LINEAS" las líneas que cumplan ese requisito
+# Sintaxis:  buscar_lineas  "$VAR"         N     "X"       "S"
+# Ejemplo:   buscar_lineas  "/etc/passwd"  "0"   "dit"   ":"
+
+# Variable de entorno "IFS": permite indicar el separador entre campos (por ejemplo,
+# entre los argumentos pasados a un script, una función o de un bucle "for i in CAMPOS")
+# Si no esta definida, el separador adoptado por el interprete es un "espacio", una tabulación
+# o un cambio de línea  (valor usado en general; por ejemplo, los argumentos pasados
+# a un script se separan pos espacios)
+
+LINEAS=""
+buscar_lineas()
+{
+   # Reseteamos la variable de salida
+   LINEAS=""
+   # Para cada linea del fichero
+   while read linea
+   do
+      IFS="$4"
+      CONT=0
+      # Para cada uno de los campos de la linea
+      for palabra in $linea
+      do
+         # Buscamos el campo de la posición "N=$2" y comprobamos si
+         # su valor es "X=$3". En caso afirmativo, añadimos la linea a "SAL"
+         if [ $CONT -eq $2 -a "$palabra" = "$3" ]; then
+             # En la variable "LINEAS" seguimos añadiendo el retorno de carro "\n"
+             # Para separar las líneas
+             LINEAS="$LINEAS\n$linea"
+         fi
+         CONT=$((CONT+1))
+      done
+   done < $1
+
+   # NOTA: "$1" debe ser el nombre de un fichero
+
+   # Eliminamos la variable IFS para que el shell vuelva a usar su valor por omisión
+   unset IFS
+}
+
+
+# Función que busca en la cadena pasada "LINEA=$1" el campo ubicado en
+# la posición "N=$2" indicada, usando el carácter "S=$3" como separador de campos
+# devolviendo el valor de dicho campo en la variable global "CAMPO"
+# Sintaxis:  extraer_campo  "LINEA"   POS   "SEPARADOR"
+# Ejemplo:   extraer_campo  "$LINEA"  2     ":"
+CAMPO=""
+extraer_campo()
+{
+    # Reseteamos la variable de salida
+    CAMPO=""
+
+    # Extraemos de dicha línea el valor del campo ubicado en la "posicion=$2"
+    # Y lo devolvemos en la variable "CAMPO"
+    IFS="$3"
+    CONT=0
+    for i in $1
+    do
+        if [ $CONT -eq $2 ]; then CAMPO=$i; fi
+        CONT=$((CONT+1))
+    done
+
+    unset IFS
+}
+
+
+# Los datos del usuario (Nombre completo, HOME, shell, ...) se definen en /etc/passwd
+# (esa información es impresa por comandos como "finger usuario"; también podría ser
+# capturada de la salida de estos comandos insertándola en variables)
+# Dichos campos se encuentran separados por el carácter ":"
+# Para extraer dichos campos puede hacerse uso de la variable "IFS"
+
+# La siguiente función se encarga de consultar el fichero "/etc/passwd" y guardar
+# en la variable global "CAMPO" el valor del campo, del usuario paso como primer
+# argumento, ubicado en la posicion indicado en el segundo argumento
+# Sintaxis:                         datos_passwd   usuario   posicion
+# Ejemplo (extraer HOME de afast):  datos_passwd   "afast"   5
+#  POSICION    CAMPO
+#    0		LOGIN
+#    1		CLAVE
+#    2		UID
+#    3		GID
+#    4		NOMBRE COMPLETO
+#    5		HOME
+#    6		SHELL
+datos_passwd()
+{
+    SEPARADOR=":"
+
+    # Pueden plantearse dos mecanismos para extraer esta información del fichero "passwd":
+    # 1) Usando los comandos "grep" y "cut" ("cut" numera con "1" al primer campo, no con "0")
+    #    CAMPO=`grep -e "^$1:.*" /etc/passwd | cut -d "${SEPARADOR}" -f $(($2+1)) -`
+
+    # Si en lugar de buscar la línea de "/etc/passwd" por el usuario, se desee buscar por otro
+    # campo, bastaría ajustar la expresión regular. Por ejemplo, para buscarla por el GID sería:
+    # grep -e ".*:.*:.*:1000:.*" /etc/passwd
+
+
+    # 2) Mediante funciones del shell y la variable "IFS":
+    # Buscar la línea de /etc/passwd asociada al usuario $1 (resultado en variable "LINEAS")
+    buscar_lineas  "/etc/passwd"  "0"   "$1"   "${SEPARADOR}"
+    # De dicha línea del usuario $1, extraer el campo
+    extraer_campo  "$LINEAS"  "$2"   "${SEPARADOR}"
+}
+
+
+#### CUERPO DEL SCRIPT ####
+
+# Obtenemos los parámetros pasados en la invocación del script
+NUMPARAM=0
+for param in $*
+do
+   if    [ "$param" = "-p" ];     then
+      PARp="S"
+      NUMPARAM=$((NUMPARAM+1))
+   elif  [ "$param" = "-u" ];     then
+      PARu="S"
+      NUMPARAM=$((NUMPARAM+1))
+   elif  [ "$param" = "--help" ]; then
+      PARh="S"
+      NUMPARAM=$((NUMPARAM+1))
+   else
+      USER=$param
+   fi
+done
+
+# Analizamos los parámetros detectados
+# Solo debe haber un párametro, son incompatibles
+if [ $NUMPARAM -gt 1 ]; then
+   printf "\nDemasiados parámetros\n"
+   ayuda
+   exit 1
+fi
+
+# Comprobamos la existencia del usuario
+id $USER > /dev/null 2>&1
+if [ $? -eq 1 ]; then
+    printf "\nEl usuario introducido como argumento no existe\n"
+    exit 2
+fi
+
+# Procesamos los argumentos
+# Parámetro de ayuda "--help"
+if [ "$PARh" = "S" ]; then
+   ayuda
+   exit 0
+fi
+
+# Salida de información condicionada por los otros argumentos
+printf "\nScript que imprime información del usuario pasado como argumento\n"
+printf "\nUsuario indicado: $USER\n"
+
+# Si NO se ha puesto "-p", se imprime la información propia del usuario
+if [ "$PARp" = "N" ]; then
+   # Obtenemos el nombre completo del usuario
+   datos_passwd  $USER   4
+   if [ $? -eq 0 ]; then
+       NOMBRE_COMPLETO=$CAMPO
+   else
+       NOMBRE_COMPLETO="No obtenido"
+   fi
+
+   # Obtenemos el HOME
+   datos_passwd  $USER   5
+   if [ $? -eq 0 ]; then
+       HOME_USER=$CAMPO
+   else
+       HOME_USER="No obtenido"
+   fi
+
+   # Obtenemos el SHELL por defecto
+   datos_passwd  $USER   6
+   if [ $? -eq 0 ]; then
+       SHELL_USER=$CAMPO
+   else
+       SHELL_USER="No obtenido"
+   fi
+
+   # Imprimimos la informacion
+   cat <<- FIN
+	+ Login:               $USER
+	+ Nombre completo:     $NOMBRE_COMPLETO
+	+ Directorio "home":   $HOME_USER
+	+ Shell por defecto:   $SHELL_USER
+	+ Número de sesiones actualmente abiertas: `who | grep $USER | wc -l`
+
+	FIN
+
+fi
+
+# Si NO se ha puesto "-u", se imprime la información de los procesos del usuario
+if [ "$PARu" = "N" ]; then
+    printf "\nProcesos pertenecientes al usuario $USER: \n"
+
+    # Pueden plantearse dos mecanismos para extraer esta información del fichero "passwd":
+    # 1) Usando el comando grep (la salida de "ps" usa espacios como separadores)
+    #    ps aux | grep -e "^${USER} " | more
+
+    # 2) Mediante funciones del shell y la variable "IFS":
+    # Guardar la salida de "ps aux" en un fichero (la entrada estándar al "while" de
+    # la funciones "buscar_lineas" debe ser un fichero)
+    FICHERO_TMP="/tmp/procesos_${USER}_`date +%H:%M:%S_%d-%m-%Y`"
+    ps aux > "${FICHERO_TMP}"
+
+    # Buscar en ese fichero las líneas asociadas al usuario $USER (ubicado en el primer campo de cada línea)
+    SEPARADOR=" "
+    buscar_lineas  "${FICHERO_TMP}"  "0"   "$USER"   "${SEPARADOR}"
+
+    # Borramos el fichero temporal
+    rm -f ${FICHERO_TMP}
+
+    # Obtenemos en "LINEAS" los procesos del usuario $USER. Los imprimimos
+    echo $LINEAS
+
+    # Respecto a la salida normal de "ps", se esta perdiendo la tabulación de las columnas
+    # dado que los espacios se estan usando como separador "IFS"
+fi
+
+~~~
+
+12. `script_menu.sh`: script que ofrezca al usuario un menú (con una opción para salir) desde el que el usuario pueda seleccionar cual de los scripts anteriores (apartados "b)" a "k)") quiere utilizar.
+
+`script_menu.sh`
+
+~~~
+#!/bin/sh
+
+# FAST: Script con un menú para usar los demas scripts
+
+# Asumimos que los demás scripts se encuentran en el mismo directorio que este
+# y que poseen permiso de ejecución
+# Obtenemos el directorio en que se encuentra el script actual
+DIRRAIZ=`dirname $0`/
+
+MENU=0
+while [ "0" -eq ${MENU} ]; do
+  OPCION=""
+  ARCHIVOS=""
+  USUARIO=""
+  PARAMETROS=""
+  clear
+  cat << EOF
+Menú de acceso a los demás scripts
+
+Seleccione el script que desea usar:
+
+ 1) "script1.sh":          Administración básica del estado de la red
+ 2) "script_copy.sh":      Copia de un fichero en otro
+ 3) "script_print.sh":     Impresión del contenido de un fichero (o ficheros de un directorio)
+ 4) "script_borrar.sh":    Borrado de los ficheros indicados
+ 5) "script_sesiones.sh":  Número de sesiones actuales del usuario indicado
+ 6) "script_mostrar.sh":   Impresión del contenido de ficheros o listado de los directorios indicados
+ 7) "script_ejecucion.sh": Asignación del permiso de ejecucion a los ficheros indicados
+ 8) "script_doble.sh":     Calculo del valor doble de un numero
+ 9) "script_tipos.sh":     Calculo del numero de ficheros "regulares/directorios" en una carpeta
+10) "script_user.sh":      Información del usuario indicado
+
+ q) Salir.
+
+Opcion seleccionada: 
+EOF
+
+  read OPCION
+  echo
+  case ${OPCION} in
+    1)
+      # No usamos ".  script" porque conlleva algunas dificultades:
+      # 1º Estariamos usando el mismo espacio de variables para este script y para los invocados
+      # 2º Si un script usa "exit", se saldrá de este script también
+      "${DIRRAIZ}"script1.sh
+      ;;
+    2)
+      "${DIRRAIZ}"script_copy.sh
+      ;;
+    3)
+      echo "Introduzca el fichero o directorio a imprimir: "
+      read ARCHIVOS
+      "${DIRRAIZ}"script_print.sh ${ARCHIVOS}
+      ;;
+    4)
+      echo "Introduzca los ficheros a borrar: "
+      read ARCHIVOS
+      "${DIRRAIZ}"script_borrar.sh ${ARCHIVOS}
+      ;;
+    5)
+      echo "Introduzca el login del usuario cuyo Nº de sesiones desea conocer: "
+      read USUARIO
+      "${DIRRAIZ}"script_sesiones.sh ${USUARIO}
+      ;;
+    6)
+      echo "Introduzca los ficheros o directorios a imprimir o listas: "
+      read ARCHIVOS
+      "${DIRRAIZ}"script_mostrar.sh ${ARCHIVOS}
+      ;;
+    7)
+      echo "Introduzca los ficheros a los que asignar permiso de ejecución: "
+      read ARCHIVOS
+      "${DIRRAIZ}"script_ejecucion.sh ${ARCHIVOS}
+      ;;
+    8)
+      "${DIRRAIZ}"script_doble.sh
+      ;;
+    9)
+      echo "Introduzca la carpera de la que desea hacer el analisis: "
+      read ARCHIVOS
+      "${DIRRAIZ}"script_tipos.sh ${ARCHIVOS}
+      ;;
+    10)
+      clear
+      echo "Introduzca el usuario (con --help para más información): "
+      read PARAMETROS
+      "${DIRRAIZ}"script_user.sh ${PARAMETROS}
+      ;;
+    q)
+       MENU=1
+       exit 0
+       ;;
+    *)
+       printf "\nOpción incorrecta\n\nPulse intro para continuar..."
+       read REPLY
+       MENU=0
+       ;;
+   esac
+   echo
+   echo "Pulse intro para continuar..."
+   read REPLY
+done
+
+~~~
+
+
+13. `script_puerto.sh`: script que reciba como argumento un número de puerto *TCP* (PUERTO) y comprobará si el valor es un número entero positivo en el rango *"[1, 1023]"*, de modo que:
+   * Si es así: el script analizará si los puertos *TCP "PUERTO"* y *"PUERTO+1"* del equipo local se encuentran a la escucha. Tras ello, imprimirá un mensaje indicando el estado obtenido. Para ello, puede analizar la salida del comando `netstat`.
+   * En otro caso: imprimirá por pantalla un mensaje indicando que el valor indicado no es un puerto de sistema.
+
+`script_puerto.sh`
+
+~~~
+#!/bin/sh
+
+
+if [ $# -eq 1 ]; then
+    PUERTO=$1
+    COMANDO="/bin/netstat -t -l -n"
+
+    if [ $PUERTO -ge 1 -a $PUERTO -le 1023 ]; then
+        for p in $PUERTO $((PUERTO+1)); do
+            $COMANDO 2> /dev/null | grep ":$p" > /dev/null 2>&1
+            [ $? = 0 ] && ESTADO="a la escucha" || ESTADO="NO a la escucha"
+            echo Puerto TCP local \"$p\" $ESTADO
+        done
+    else
+        echo El puerto indicado no es del sistema
+    fi
+else
+    echo Uso $0 PUERTO_TCP_ENTRE_1_Y_1023
+fi
+
+~~~
+
+14. `script_arp.sh`: script que reciba como argumento un número entero, guardándolo en la variable *POS_ARP*. El script comprobará si el valor de la variable *POS_ARP* es un número entero positivo, de modo que:
+   * Si es así: el script calculará el número de entradas que actualmente tiene la caché *ARP* del equipo, guardándolo en la variable *NENTRADAS*. Si el valor de *POS_ARP* es mayor que *NENTRADAS*, imprimirá por pantalla un mensaje tal como: *Ninguna entrada en la posición POS_ARP*. En caso de que *POS_ARP* sea menor o igual que *NENTRADAS*, imprimirá por pantalla un mensaje con la posición de la entrada *ARP POS_ARP*, seguido del contenido de dicha entrada *ARP*.
+   * En otro caso: Imprimirá por pantalla un mensaje indicando que el valor indicado no es un número entero: *Posición de entrada ARP no válida*
+
+Se solicitan dos posibles soluciones:
+
+   * `script_arp1.sh`: Basada en el comando `read` y *estructuras de control*.
+   * `script_arp2.sh`: Analizando la salida del comando `arp` mediante comandos de análisis de texto.
+
+`script_arp1.sh`
+
+~~~
+#!/bin/sh
+
+NARP=$1
+
+if [ $NARP -ge 1 ] 2> /dev/null; then
+    # Calculamos el numero de entradas de la Tabla ARP
+    NENTRADAS=$(($(/usr/sbin/arp -n 2> /dev/null | wc -l)-1))
+
+    if [ $NARP -gt $NENTRADAS ]; then
+        echo "Ninguna entrada ARP en la posicion \"$NARP\""
+    else
+        # Si la entrada pedida existe, se imprime
+        # La entrada "N" se encuentra en la linea "N+1" de la salida de arp
+
+        # Solucion A basada en estructuras de control
+        LIN=0
+        /usr/sbin/arp -n | while read linea ; do
+            LIN=$((LIN+1))
+            [ $LIN -eq $(($NARP+1)) ] && { 
+		        echo "Entrada \"$NARP\" de la cache: "
+                echo "$linea"; }
+        done
+
+    fi
+else
+    echo "Posicion de entrada ARP no valida"
+fi
+
+~~~
+
+`script_arp2.sh`
+
+~~~
+#!/bin/sh
+
+NARP=$1
+
+if [ $NARP -ge 1 ] 2> /dev/null; then
+    # Calculamos el numero de entradas de la Tabla ARP
+    NENTRADAS=$(($(/usr/sbin/arp -n 2> /dev/null | wc -l)-1))
+
+    if [ $NARP -gt $NENTRADAS ]; then
+        echo "Ninguna entrada ARP en la posicion \"$NARP\""
+    else
+        # Si la entrada pedida existe, se imprime
+        # La entrada "N" se encuentra en la linea "N+1" de la salida de arp
+
+        # Solucion B basada en los comandos "head" y "tail"
+        SAL=$(/usr/sbin/arp -n  2> /dev/null | head -n $(($NARP+1)) | tail -n 1)
+        if ! [ -z "$SAL" ]; then
+            echo "Entrada \"$NARP\" de la cache ARP:"
+            echo "$SAL"
+        else
+            echo "Error"
+        fi
+
+    fi
+else
+    echo "Posicion de entrada ARP no valida"
+fi
+
+~~~
+
+15. `script_param.sh`: Considere que en el shell actual se dispone de la variable:
+
+`VAR="nombre=v1&edad=v2&tlf=v3"`
+
+Escriba un shell-script que analice el valor de dicha variable y para cada uno de los parámetros extraiga su valor y lo imprima por pantalla. Por ejemplo, que la salida sea:
+
+`Cadena analizada: nombre=v1&edad=v2&tlf=v3 nombre: v1, edad: v2, tlf: v3.`
+
+Se solicitan dos posibles soluciones:
+   * `script_param1.sh`: Usando la variable de entorno `IFS`.
+   * `script_param2.sh`: Sin usar `IFS`.
+
+`script_param1.sh`
+
+~~~
+#!/bin/sh
+#Analisis de cadena tipo "nombre=valor1&edad=valor2&telefono=valor3"
+NOMBRE=
+EDAD=
+TELEFONO=
+
+asignaValor()
+{
+    CAMPO=$1
+    VALOR=$2
+    case $CAMPO in
+	nombre)
+	    NOMBRE=$VALOR;;
+	edad)
+	    EDAD=$VALOR;;
+	telefono)
+	    TELEFONO=$VALOR;;
+    esac
+}
+
+QUERY_STRING=$1
+
+# Contamos el número de parámetros y guardamos los dos primeros
+IFS="&"      # Variable shell con el carácter de separación
+for PAR in $QUERY_STRING
+do
+    # Extraemos el nombre y valor de los dos primeros parámetros
+    IFS="="    # Carácter de separacion entre nombre y valor
+    asignaValor $PAR
+done
+
+printf "Cadena analizada: '%s'\n" "$QUERY_STRING"
+printf "Nombre: %s, Edad: %s, Teléfono: %s.\n"  "$NOMBRE" "$EDAD" "$TELEFONO"
+
+~~~
+
+`script_param2.sh`
+
+~~~
+#!/bin/sh
+#Analisis de cadena tipo "nombre=valor1&edad=valor2&telefono=valor3"
+NOMBRE=
+EDAD=
+TELEFONO=
+
+asignaValor()
+{
+    CAMPO=$1
+    VALOR=$2
+    case $CAMPO in
+	nombre)
+	    NOMBRE=$VALOR;;
+	edad)
+	    EDAD=$VALOR;;
+	telefono)
+	    TELEFONO=$VALOR;;
+    esac
+}
+
+CADENA_PROCESO=""
+CADENA_PARA_ANALIZAR=$1
+# El bucle se ejecuta mientras la cadana vaya cambiando en cada pasada
+while [ "$CADENA_PROCESO" != "$CADENA_PARA_ANALIZAR" ]
+do
+    CADENA_PROCESO=$CADENA_PARA_ANALIZAR
+    # Extraemos el nombre y valor de los dos primeros parámetros
+    PAR=${CADENA_PROCESO%%&*} #quitamos desde el primer &
+    asignaValor "${PAR%=*}" "${PAR#*=}"  #campo=valor
+    #Actualizamos CADENA_PARA_ANALIZAR
+    #quitamos hasta el primer & incluido
+    CADENA_PARA_ANALIZAR=${CADENA_PROCESO#*&} 
+done
+
+printf "Cadena analizada: '%s'\n" "$1"
+printf "Nombre: %s, Edad: %s, Teléfono: %s.\n"  "$NOMBRE" "$EDAD" "$TELEFONO"
+
+~~~
+
+---
+
+## Ejercicio Extra
+
+Realizar un Shell Script de UNIX/Linux que simule el comando `find`. Podrá recibir de uno a tres parámetros:
+- En caso de ser uno, será el *fichero* a buscar en el *directorio actual*.
+- En caso de ser dos, será una de las siguientes opciones:
+   *  *Directorio* (ruta completa) y *fichero* a buscar en ella.
+   *  *Fichero* y opcion *“-s”*; buscará el fichero en la *ruta actual* y sus
+*subdirectorios*.
+- En caso de ser tres serán *directorio* (ruta completa), *fichero* y opcion *“-s”*; buscará
+el fichero en la ruta y sus subdirectorios. Ejemplos:
+   `Buscar fichero`
+   `Buscar directorio fichero`
+   `Buscar fichero -s`
+   `Buscar directorio fichero –s`
+
+Se valorará la eficiciencia y control de errores. No se podrá usar los comando `find` ni `ls`.
+
+`script_buscar.sh`
+
+~~~
+
+~~~
+
+---
