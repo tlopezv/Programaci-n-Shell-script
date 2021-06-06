@@ -15,6 +15,10 @@
 
 # Se valorará la eficiciencia y control de errores. No se podrá usar los comando `find` ni `ls`.
 
+# Ejemplo de ejecución:
+#   ./script_buscar.sh variables.sh -s
+# Equivalente a:
+#   find . -name 'variables*'
 
 # Declaramos 3 variables que inicializaremos según el número de argumentos pasados
 DIRECTORIO=
@@ -28,8 +32,8 @@ case $# in
         OP_SUBD=false; 
         ;;
     2)  
-        if test "$2" = "-n"; then
-            FICHERO="S1";
+        if test "$2" = "-s"; then
+            FICHERO="$1";
             DIRECTORIO=$(pwd);
             OP_SUBD=true;
         else
@@ -50,21 +54,30 @@ esac
 
 # Esto sería sin la opción de buscar en los subdirectorios
 
-for VAR in "$DIRECTORIO"/*
-do
-    if test -f "$VAR"; then
-        # Comentar el "echo" de la siguiente línea si ya no se está depurando
-        echo "Archivo regular: $VAR";
-        # "${VAR##*/}" Para quitar la parte de la ruta y dejar sólo el nombre del fichero
-        if test "${VAR##*/}" = "$FICHERO"; then
+funcBuscar() {
+    # Machacamos el valor de la variable DIRECTORIO con el parámetro pasado
+    DIRECTORIO="$1"
+    for VAR in "$DIRECTORIO"/*
+    do
+        if test -f "$VAR"; then
             # Comentar el "echo" de la siguiente línea si ya no se está depurando
-            echo "ENCONTRADO $FICHERO";
-            # Comentar el "echo" de la siguiente línea si ya no se está depurando
-            echo "Pulse una tecla para salir...";
-            read TECLA;
-            exit 0;
+            echo "Archivo regular: $VAR\t\tComparamos:${VAR##*/} = $FICHERO";
+            # "${VAR##*/}" Para quitar la parte de la ruta y dejar sólo el nombre del fichero
+            if test "${VAR##*/}" = "$FICHERO"; then
+                # Comentar el "echo" de la siguiente línea si ya no se está depurando
+                echo "ENCONTRADO $FICHERO en $VAR";
+                # Comentar el "echo" de la siguiente línea si ya no se está depurando
+                echo "Pulse una tecla para salir...";
+                read TECLA;
+                exit 0;
+            fi
+        elif test -d "$VAR"; then
+            echo "Directorio: $VAR";
+            if test "$OP_SUBD" = "true"; then
+                funcBuscar "$VAR";
+            fi
         fi
-    elif test -d "$VAR"; then
-        echo "Directorio: $VAR";
-    fi
-done
+    done
+}
+
+funcBuscar "$DIRECTORIO"
