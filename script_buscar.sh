@@ -61,7 +61,7 @@ funcBuscar() {
     do
         if test -f "$VAR"; then
             # Comentar el "echo" de la siguiente línea si ya no se está depurando
-            echo "Archivo regular: $VAR\t\tComparamos:${VAR##*/} = $FICHERO";
+            echo "Archivo regular: $VAR\t\tComparamos: ${VAR##*/} = $FICHERO";
             # "${VAR##*/}" Para quitar la parte de la ruta y dejar sólo el nombre del fichero
             if test "${VAR##*/}" = "$FICHERO"; then
                 # Comentar el "echo" de la siguiente línea si ya no se está depurando
